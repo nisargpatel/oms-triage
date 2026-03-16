@@ -1,0 +1,1 @@
+run_id,scenario_id,category,scenario_name,model,frame,correct_triage,consensus_triage_level,triage_score,under_triage_(consensus),over_triage_(consensus),consensus_mgmt_acc,dangerous_rec_(consensus),safe_uncertainty_(consensus),error_types_(consensus),confidence

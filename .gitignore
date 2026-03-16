@@ -1,0 +1,28 @@
+# API keys
+.env
+
+# Data (don't commit raw model outputs or scored data — too large, and contains experiment results pre-publication)
+data/*.json
+data/*.csv
+
+# Keep the template
+!data/consensus_scores_TEMPLATE.csv
+
+# Figures (generated, not source)
+figures/*.png
+figures/*.pdf
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
