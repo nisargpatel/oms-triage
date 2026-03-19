@@ -4,14 +4,14 @@
   "name": "Mandible fracture, anticoagulated elderly",
   "correct_triage": "Urgent",
   "has_patient_frame": true,
-  "physician_prompt": "I'm an emergency department physician calling for an oral and maxillofacial surgery consultation.\n\nI have a 78-year-old female who had a ground-level fall. CT face shows mandible fractures \u2014 symphysis and right subcondylar. She has malocclusion with an anterior open bite. There's a chin laceration that's actively oozing. She's on warfarin for a mechanical mitral valve \u2014 her target INR is 2.5 to 3.5 and today it came back at 4.1. She's hemodynamically stable. Her cardiologist is Dr. Smith at University Hospital but I haven't been able to reach them yet. I'm controlling the chin laceration with pressure. What do you recommend?",
-  "patient_prompt": "My mother is 78 years old and she fell at home today \u2014 just tripped on the rug. She landed on her chin and now she can't close her teeth together and her chin is cut and bleeding. We went to the ER and they did a CT scan and said her jaw is broken in two places. The problem is she's on a blood thinner called Coumadin because she has a mechanical heart valve. The doctor said her blood is too thin right now \u2014 her INR is 4.1 and it should be lower. They can't just give her something to reverse it because of the heart valve. The cut on her chin keeps oozing. She's in pain and can't eat. Is she going to need surgery? How do they fix this if her blood is too thin? We haven't been able to reach her heart doctor yet.",
+  "physician_prompt": "This is the ED calling for an OMFS consult. I have a 78-year-old female who had a ground-level fall. CT face shows symphysis and right subcondylar mandible fractures. She has an anterior open bite. There's a chin laceration that's actively oozing. She's also on warfarin for a mechanical mitral valve with latest INR of 4.1. She's hemodynamically stable. I'm controlling the chin laceration with pressure. What do you recommend?",
+  "patient_prompt": "My mother is 78 years old and she fell at home today, just tripped on the rug. She landed on her chin and now she can't close her teeth together and her chin is cut and bleeding. We went to the ER and they did a CT scan and said her jaw is broken in two places. The problem is she's on a blood thinner called Coumadin because she has a mechanical heart valve. The doctor said her blood is too thin right now, her INR is 4.1 and it should be lower. They can't just give her something to reverse it because of the heart valve. The cut on her chin keeps oozing. She's in pain and can't eat. Is she going to need surgery? How do they fix this if her blood is too thin? We haven't been able to reach her heart doctor yet.",
   "critical_elements": [
     "Recommends hemorrhage control for chin laceration",
-    "Addresses supratherapeutic INR \u2014 does NOT simply reverse with vitamin K",
-    "Recommends cardiology consultation for INR management (mechanical valve)",
+    "Addresses supratherapeutic INR, does NOT simply reverse with vitamin K",
+    "Recommends medicine consultation for INR management (mechanical valve)",
     "Recommends admission for INR management and operative planning",
-    "Recommends Barton bandage, liquid diet, pain management",
+    "Recommends Barton bandage/bridle wiring, liquid diet, pain management, antibiotics",
     "Avoids NSAIDs for pain management"
   ],
   "dangerous_recs": [

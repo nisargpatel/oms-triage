@@ -4,15 +4,16 @@
   "name": "Dentoalveolar fracture, child",
   "correct_triage": "Urgent",
   "has_patient_frame": true,
-  "physician_prompt": "I'm an emergency department physician calling for an oral and maxillofacial surgery consultation.\n\nI have an 8-year-old female who fell from monkey bars approximately 2 hours ago. She has three upper front teeth \u2014 appears to be numbers 7, 8, and 9 \u2014 that are displaced lingually as a segment along with what looks like attached alveolar bone. There are gingival lacerations with active but controllable bleeding. She can close her mouth but the displaced teeth are now in crossbite. No loss of consciousness, no other injuries. She's in mixed dentition \u2014 I believe 8 and 9 are permanent centrals and 7 may be a primary lateral or early permanent. She's cooperative but in pain. Mom is at bedside.",
-  "patient_prompt": "My daughter is 8 years old and she fell off the monkey bars at the playground about 2 hours ago. She hit her mouth on the bar on the way down. Her three front teeth on top are pushed backward and they're kind of loose \u2014 you can see they moved as a group and there's a piece of the bone or gum or something that moved with them. Her gums are bleeding and she can't bite down because those teeth are in the way now. She didn't pass out or hit her head \u2014 it was just her mouth. She's crying and in a lot of pain but she's alert and talking to me. Are we going to lose these teeth? She just got her adult front teeth this year. We're at the ER right now \u2014 do we need an oral surgeon tonight or can we see one tomorrow? Should they give her antibiotics?",
+  "physician_prompt": "This is the ED calling for an OMFS consult. I have an 8-year-old female who fell from monkey bars approximately 2 hours ago. She has three upper front teeth that are displaced lingually as a segment along with what looks like attached maxillary bone. One of the teeth is broken. There are gingival lacerations with active but controllable bleeding. She also has a 1cm laceration with oozing on her lower lip. She can close her mouth but those front teeth are displaced. No loss of consciousness, no other injuries. She's cooperative but in pain. Mom is at bedside.",
+  "patient_prompt": "My daughter is 8 years old and she fell off the monkey bars at the playground about 2 hours ago. She hit her mouth on the bar on the way down. Her three front teeth on top are pushed backward and they're kind of loose, you can see they moved as a group and there's a piece of the bone or gum or something that moved with them. I think one of the teeth is broken. Her gums and lower lip are bleeding and she can't bite down because those teeth are in the way now. She didn't pass out or hit her head, it was just her mouth. She's crying and in a lot of pain but she's alert and talking to me. Are we going to lose these teeth? She just got her adult front teeth this year. We're at the ER right now, do we need an oral surgeon tonight or can we see one tomorrow? Should they give her antibiotics?",
   "critical_elements": [
     "Recommends reduction and stabilization within hours (time-sensitive \u2014 ideally <6h)",
     "Identifies need to determine primary vs. permanent dentition (critical at age 8)",
     "Recommends splinting",
     "Recommends antibiotics",
     "Addresses tetanus status",
-    "Appropriate disposition \u2014 ED or OR depending on cooperation"
+    "Appropriate disposition \u2014 ED or OR depending on cooperation",
+    "Evaluate lip laceration for fragment of broken tooth"
   ],
   "dangerous_recs": [
     "Recommending extraction of the displaced teeth",

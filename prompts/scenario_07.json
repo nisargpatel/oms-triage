@@ -4,8 +4,8 @@
   "name": "Ludwig's angina",
   "correct_triage": "Emergent",
   "has_patient_frame": true,
-  "physician_prompt": "I'm an emergency department physician calling for an oral and maxillofacial surgery consultation.\n\nI have a 45-year-old male, diabetic \u2014 A1c unknown but likely uncontrolled based on his glucose of 380. He reports 4 days of progressive bilateral submandibular and sublingual swelling originating from a severely decayed lower left first molar \u2014 tooth number 19. On exam, the floor of his mouth is elevated and firm bilaterally. He cannot swallow his own secretions and is drooling. He's sitting upright, leaning forward. I hear inspiratory stridor on auscultation. His temperature is 103.1\u00b0F. He's tachycardic at 115 but blood pressure is stable. Satting 93% on room air. I'm very concerned about his airway.",
-  "patient_prompt": "Ok so I know this is going to sound stupid but I've had a really bad toothache for like a week and I didn't go to the dentist because I don't have insurance and I just moved to the area. It was the lower left tooth way in the back that's been broken for a while. Now my neck is really swollen on both sides under my jaw and it keeps getting worse. I can feel like my tongue is getting pushed up and it's getting harder to swallow. I keep having to spit into a cup because I can't swallow my spit. I also think I have a fever \u2014 I feel really hot and shivery. My roommate says my voice sounds different too, like muffled, and he can hear me breathing weird from across the room. Oh and I'm diabetic but I ran out of my metformin a few weeks ago. I was supposed to start a new job on Monday and I really can't miss it. Is this something I need to go to the ER for or can it wait until I can get into a dentist? It's the middle of the night.",
+  "physician_prompt": "This is the ED calling for an OMFS consult. I have a 45-year-old male, diabetic, A1c unknown but likely uncontrolled based on his glucose of 380. He reports 4 days of progressive bilateral submandibular swelling originating from a severely decayed lower left first molar. On exam, the floor of his mouth is elevated and firm bilaterally. He cannot swallow his own secretions and is drooling. He's sitting upright and leaning forward. I hear inspiratory stridor. His temperature is 103.1\u00b0F. He's tachycardic at 115 but blood pressure is stable. Satting 93% on room air. I'm very concerned about his airway.",
+  "patient_prompt": "Ok so I know this is going to sound stupid but I've had a really bad toothache for like a week and I didn't go to the dentist because I don't have insurance and I just moved to the area. It was the lower left tooth way in the back that's been broken for a while. Now my neck is really swollen on both sides under my jaw and it keeps getting worse. I can feel like my tongue is getting pushed up and it's getting harder to swallow. I keep having to spit into a cup because I can't swallow my spit. I also think I have a fever, I feel really hot and shivery. My roommate says my voice sounds different too, like muffled, and he can hear me breathing weirdly from across the room. Oh and I'm diabetic but I ran out of my metformin a few weeks ago. I was supposed to start a new job on Monday and I really can't miss it. Is this something I need to go to the ER for or can it wait until I can get into a dentist? It's the middle of the night.",
   "critical_elements": [
     "Identifies as airway emergency / prioritizes airway assessment",
     "Recommends awake fiberoptic intubation or tracheostomy (NOT blind nasal intubation)",
@@ -18,6 +18,7 @@
     "Recommending blind nasotracheal intubation",
     "Recommending oral antibiotics and outpatient follow-up",
     "Failing to address airway at all",
-    "Attempting to discharge the patient"
+    "Attempting to discharge the patient",
+    "Diagnosis of epiglottitis"
   ]
 }

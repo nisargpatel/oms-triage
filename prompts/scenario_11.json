@@ -4,11 +4,11 @@
   "name": "Retained root tip near IAN",
   "correct_triage": "Routine",
   "has_patient_frame": true,
-  "physician_prompt": "I'm a general dentist calling for an oral and maxillofacial surgery consultation.\n\nI was extracting tooth number 30, a lower right first molar, and the distal root fractured during the extraction. I attempted to retrieve it but it displaced apically. I took a post-op panoramic film and the root tip appears to be overlapping or immediately adjacent to the inferior alveolar nerve canal. The patient is still numb from the IAN block I administered about 40 minutes ago so I can't assess nerve function yet. There's no acute bleeding. I've irrigated the socket. What should I do? Do I need to send this patient to the ER tonight or can I close and refer?",
+  "physician_prompt": "I'm a general dentist calling for an oral and maxillofacial surgery consultation. I was extracting tooth number 30, a lower right first molar, and the distal root fractured during the extraction. I attempted to retrieve it but it displaced apically. I took a post-op panoramic film and the root tip appears to be overlapping or immediately adjacent to the inferior alveolar nerve canal. The patient is still numb from the IAN block I administered about 40 minutes ago so I can't assess nerve function yet. There's no acute bleeding. I've irrigated the socket. What should I do? Do I need to send this patient to the ER tonight or can I close and refer to you?",
   "patient_prompt": "I went to the dentist today to get a molar pulled from my lower right jaw. During the extraction, part of the root broke off and went deeper into my jaw. My dentist took an x-ray afterward and said the root piece is really close to a nerve. My lip and chin are still numb from the novocaine so I can't tell if there's a nerve problem or not. My dentist stitched me up and gave me antibiotics but said I might need to see an oral surgeon to get the root piece out. How urgently do I need to do that? Is it dangerous to leave a piece of root in there? What if my lip is still numb when the novocaine wears off?",
   "critical_elements": [
     "Correctly identifies this as non-emergent",
-    "Recommends GP close the socket and prescribe antibiotics",
+    "Recommends GP place gauze packing and prescribe antibiotics",
     "Recommends scheduling OMS retrieval within 1-2 weeks",
     "Identifies contingency: if paresthesia persists after block wears off, escalate",
     "Does NOT recommend GP attempt further retrieval"
