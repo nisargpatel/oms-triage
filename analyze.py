@@ -1,14 +1,16 @@
 """
 AAOMS 2026 AI Triage Study — Analysis & Figure Generation
-Reads scored consensus data and produces all study figures.
+Reads scored consensus data and scenario ground truth from prompts/*.json.
 
 Usage:
     python analyze.py data/consensus_scores.csv
     
     Figures are saved to figures/
+    Ground truth is loaded from prompts/*.json
 """
 
 import sys
+import json
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,6 +18,7 @@ import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap
 from pathlib import Path
 from scipy import stats
+from config import load_scenarios, TRIAGE_MAP
 
 FIGURES_DIR = Path("figures")
 FIGURES_DIR.mkdir(exist_ok=True)
@@ -34,7 +37,6 @@ plt.rcParams.update({
     "figure.facecolor": "white",
 })
 
-TRIAGE_MAP = {"Emergent": 3, "Urgent": 2, "Routine": 1, "Redirect": 0}
 TRIAGE_LABELS = ["Redirect", "Routine", "Urgent", "Emergent"]
 MODEL_COLORS = {"chatgpt": "#10A37F", "claude": "#D4A574", "gemini": "#4285F4"}
 FRAME_STYLES = {"physician": "-", "patient": "--"}
@@ -427,6 +429,22 @@ def compute_statistics(df):
                   f"Adjacent={adjacent} | Incorrect={incorrect} | "
                   f"Under-triage={ut} ({ut/n*100:.0f}%)")
 
+    # ── Management accuracy (physician frame only) ──
+    print("\n── Management Accuracy (Physician Frame Only) ──")
+    print("  Note: Management elements scored only for physician-frame responses.")
+    print("  Patient-frame responses scored on triage, dangerous recs, safe uncertainty, and info-seeking.")
+    phys_df = df[df["frame"] == "physician"]
+    if "consensus_mgmt_acc" in phys_df.columns:
+        for model in phys_df["model"].unique():
+            sub = phys_df[phys_df["model"] == model]
+            mgmt_vals = pd.to_numeric(sub["consensus_mgmt_acc"], errors="coerce").dropna()
+            if len(mgmt_vals) > 0:
+                mean_mgmt = mgmt_vals.mean()
+                std_mgmt = mgmt_vals.std()
+                print(f"  {model:8s} | Mean mgmt accuracy: {mean_mgmt:.0%} (SD={std_mgmt:.0%}, n={len(mgmt_vals)})")
+    else:
+        print("  (consensus_mgmt_acc column not found)")
+
     # ── McNemar's test for framing effect ──
     print("\n── McNemar's Test: Physician vs Patient Frame ──")
     paired = df[df["category"] != "E"].copy()
@@ -505,6 +523,118 @@ def compute_statistics(df):
     print("  Use: from statsmodels.stats.inter_rater import fleiss_kappa")
     print("  Or: pip install statsmodels && python compute_irr.py")
 
+    # ── SENSITIVITY ANALYSES ──
+    print("\n" + "="*60)
+    print("SENSITIVITY ANALYSES")
+    print("="*60)
+
+    # ── S1: Caller specialty comparison (Category B ED docs vs Category C GPs) ──
+    print("\n── S1: Caller Specialty Effect (ED Physician vs GP Dentist, physician frame only) ──")
+    phys_only = df[df["frame"] == "physician"]
+    for model in phys_only["model"].unique():
+        cat_b = phys_only[(phys_only["model"] == model) & (phys_only["category"] == "B")]
+        cat_c = phys_only[(phys_only["model"] == model) & (phys_only["category"] == "C")]
+        if cat_b.empty or cat_c.empty:
+            continue
+        b_acc = (cat_b["triage_score"].astype(float) == 2).mean() * 100
+        c_acc = (cat_c["triage_score"].astype(float) == 2).mean() * 100
+        b_mgmt = cat_b["consensus_mgmt_acc"].astype(float).mean() * 100 if "consensus_mgmt_acc" in cat_b.columns else float('nan')
+        c_mgmt = cat_c["consensus_mgmt_acc"].astype(float).mean() * 100 if "consensus_mgmt_acc" in cat_c.columns else float('nan')
+        print(f"  {model:8s} | Cat B (ED physician): triage acc={b_acc:.0f}%, mgmt acc={b_mgmt:.0f}%")
+        print(f"  {model:8s} | Cat C (GP dentist):   triage acc={c_acc:.0f}%, mgmt acc={c_mgmt:.0f}%")
+        print(f"  {model:8s} | Delta: {b_acc - c_acc:+.0f} percentage points triage accuracy")
+    print("  Note: n=5 per category — descriptive only, not inferential.")
+
+    # ── S2: Excluding Scenario 9 (redirect/wrong consult) ──
+    print("\n── S2: Primary Analysis Excluding Scenario 9 (Redirect) ──")
+    df_no9 = df[df["scenario_id"] != 9].copy()
+    paired_no9 = df_no9[df_no9["category"] != "E"]
+    for model in paired_no9["model"].unique():
+        phys = paired_no9[(paired_no9["model"] == model) & (paired_no9["frame"] == "physician")].sort_values("scenario_id")
+        pat = paired_no9[(paired_no9["model"] == model) & (paired_no9["frame"] == "patient")].sort_values("scenario_id")
+        if len(phys) != len(pat) or len(phys) == 0:
+            continue
+        phys_correct = (phys["triage_score"].astype(float).values == 2)
+        pat_correct = (pat["triage_score"].astype(float).values == 2)
+        b = ((phys_correct) & (~pat_correct)).sum()
+        c = ((~phys_correct) & (pat_correct)).sum()
+        phys_acc = phys_correct.mean() * 100
+        pat_acc = pat_correct.mean() * 100
+        p_str = ""
+        if b + c > 0:
+            p_value = stats.binomtest(b, b + c, 0.5).pvalue
+            p_str = f" | McNemar p={p_value:.4f}"
+        print(f"  {model:8s} | Phys acc={phys_acc:.0f}%, Pat acc={pat_acc:.0f}%{p_str} (n={len(phys)} pairs, excl. S9)")
+
+    # ── S3: Category E standalone analysis ──
+    print("\n── S3: Category E (Anesthesia Emergencies) — Standalone Analysis ──")
+    cat_e = df[df["category"] == "E"]
+    if not cat_e.empty:
+        for model in cat_e["model"].unique():
+            sub = cat_e[cat_e["model"] == model]
+            n = len(sub)
+            correct = (sub["triage_score"].astype(float) == 2).sum()
+            mgmt = sub["consensus_mgmt_acc"].astype(float).mean() if "consensus_mgmt_acc" in sub.columns else float('nan')
+            dangerous = (sub["dangerous_rec_(consensus)"] == "Y").sum() if "dangerous_rec_(consensus)" in sub.columns else 0
+            print(f"  {model:8s} | Triage correct: {correct}/{n} | "
+                  f"Mean mgmt accuracy: {mgmt:.0%} | "
+                  f"Dangerous recs: {dangerous}/{n}")
+        
+        # Per-scenario breakdown for Category E
+        print("\n  Per-scenario breakdown (Category E):")
+        for _, row in cat_e.iterrows():
+            score = row.get("triage_score", "?")
+            mgmt = row.get("consensus_mgmt_acc", "?")
+            model = row.get("model", "?")
+            name = row.get("scenario_name", f"S{row.get('scenario_id', '?')}")
+            dangerous = row.get("dangerous_rec_(consensus)", "N")
+            errors = row.get("error_types_(consensus)", "")
+            flag = " ⚠️DANGEROUS" if dangerous == "Y" else ""
+            print(f"    S{row.get('scenario_id', '?'):2d} ({name[:30]:30s}) | {model:8s} | "
+                  f"triage={score} | mgmt={mgmt}{flag}"
+                  + (f" | errors: {errors}" if errors and str(errors) != "nan" else ""))
+    else:
+        print("  No Category E data found.")
+
+    # ── S4: Information-seeking behavior in patient frame ──
+    print("\n── S4: Information-Seeking Behavior (Patient Frame Only) ──")
+    patient_data = df[df["frame"] == "patient"]
+    if "asked_clarifying_questions" in patient_data.columns or "information_seeking" in patient_data.columns:
+        # Try common column name variations
+        q_col = None
+        for candidate in ["asked_clarifying_questions", "information_seeking", "asks_questions"]:
+            if candidate in patient_data.columns:
+                q_col = candidate
+                break
+        if q_col:
+            for model in patient_data["model"].unique():
+                sub = patient_data[patient_data["model"] == model]
+                asked = (sub[q_col].astype(str).str.upper() == "Y").sum()
+                total = len(sub)
+                # Compare accuracy for asked vs didn't ask
+                asked_rows = sub[sub[q_col].astype(str).str.upper() == "Y"]
+                not_asked = sub[sub[q_col].astype(str).str.upper() != "Y"]
+                asked_acc = (asked_rows["triage_score"].astype(float) == 2).mean() * 100 if len(asked_rows) > 0 else 0
+                not_acc = (not_asked["triage_score"].astype(float) == 2).mean() * 100 if len(not_asked) > 0 else 0
+                print(f"  {model:8s} | Asked questions: {asked}/{total} ({asked/total*100:.0f}%) | "
+                      f"Accuracy when asked: {asked_acc:.0f}% vs didn't ask: {not_acc:.0f}%")
+        else:
+            print("  (Column not found — score this manually in the spreadsheet)")
+    else:
+        print("  (Information-seeking data not found in CSV — score this in the spreadsheet)")
+
+    # ── S5: Confidence-accuracy correlation ──
+    print("\n── S5: Confidence-Accuracy Correlation (Spearman's) ──")
+    if "confidence" in df.columns:
+        for model in df["model"].unique():
+            sub = df[df["model"] == model].copy()
+            sub["conf"] = pd.to_numeric(sub["confidence"], errors="coerce")
+            sub["correct"] = (sub["triage_score"].astype(float) == 2).astype(int)
+            sub = sub.dropna(subset=["conf"])
+            if len(sub) > 5:
+                rho, p = stats.spearmanr(sub["conf"], sub["correct"])
+                print(f"  {model:8s} | Spearman rho={rho:.3f}, p={p:.4f} (n={len(sub)})")
+
     print("\n" + "="*60)
 
 
@@ -530,9 +660,25 @@ def main():
         return
 
     filepath = sys.argv[1]
-    print(f"Loading data from {filepath}...")
+    print(f"Loading scored data from {filepath}...")
     df = load_data(filepath)
-    print(f"Loaded {len(df)} rows")
+    print(f"Loaded {len(df)} scored rows")
+
+    # Load ground truth from scenario JSON files
+    print(f"Loading ground truth from prompts/*.json...")
+    scenarios = load_scenarios()
+    if scenarios:
+        gt = {s["id"]: s for s in scenarios}
+        print(f"Loaded {len(gt)} scenarios with scoring keys")
+        
+        # Merge critical element counts and ground truth into df for reference
+        if "scenario_id" in df.columns:
+            df["num_critical_elements"] = df["scenario_id"].map(
+                lambda sid: len(gt[sid]["critical_elements"]) if sid in gt else None
+            )
+    else:
+        print("WARNING: No scenario JSONs found in prompts/ — ground truth not loaded")
+
     print(f"Models: {df['model'].unique()}")
     print(f"Frames: {df['frame'].unique()}")
     print(f"Categories: {df['category'].unique()}")
@@ -548,6 +694,13 @@ def main():
     
     # Run statistical analyses
     compute_statistics(df)
+    
+    # Print ground truth summary for reference
+    if scenarios:
+        print("\n── Ground Truth Summary (from prompts/*.json) ──")
+        for s in scenarios:
+            print(f"  S{s['id']:02d} | {s['category']} | {s['correct_triage']:15s} | "
+                  f"{len(s['critical_elements'])} elements | {s['name'][:40]}")
     
     print(f"\nAll figures saved to {FIGURES_DIR}/")
 

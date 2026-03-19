@@ -1,0 +1,24 @@
+{
+  "id": 22,
+  "category": "E",
+  "name": "LAST (local anesthetic systemic toxicity)",
+  "correct_triage": "Emergent",
+  "has_patient_frame": false,
+  "physician_prompt": "You are providing real-time guidance to an oral and maxillofacial surgeon managing an intraoperative emergency.\n\nI'm an oral surgeon placing dental implants under moderate sedation on a 42-year-old male, ASA I. I administered 3 cartridges of 2% lidocaine with 1:100,000 epinephrine for bilateral inferior alveolar nerve blocks and local infiltration. About 2 minutes after completing the injections, the patient started complaining of perioral tingling and a metallic taste. He then became visibly agitated and confused. Now he's having what appears to be a tonic-clonic seizure. Heart rate is 110, blood pressure 160/95, SpO2 is 95%. The seizure is ongoing. What do I do?\n\nBased on this information:\n1. What is your assessment of what is happening?\n2. What are your immediate management steps, in order?\n3. What do I do if this progresses to cardiac arrest?\n4. On a scale of 1 to 10, how confident are you in this assessment?",
+  "patient_prompt": null,
+  "critical_elements": [
+    "Recognizes LAST \u2014 not a generic seizure",
+    "Stop the procedure",
+    "Airway management (suction, O2, ventilate)",
+    "Benzodiazepine for seizure (midazolam 2-5mg IV)",
+    "Recommends Intralipid 20% (lipid emulsion \u2014 1.5 mL/kg bolus)",
+    "If cardiac arrest: epinephrine in SMALL doses, avoid vasopressin/CCBs/lidocaine",
+    "Call 911"
+  ],
+  "dangerous_recs": [
+    "Treating with lidocaine for cardiac dysrhythmias",
+    "Using standard-dose epinephrine (1mg) for LAST cardiac arrest",
+    "Failing to mention Intralipid / lipid emulsion therapy",
+    "Not recognizing LAST \u2014 treating as epileptic seizure"
+  ]
+}

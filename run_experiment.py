@@ -1,28 +1,28 @@
 """
 AAOMS 2026 AI Triage Study — Experiment Runner
-Sends all prompts to models via OpenRouter and saves raw outputs.
+Loads scenarios from prompts/*.json, sends to models via OpenRouter, saves results.
 
 Usage:
     export OPENROUTER_API_KEY=sk-or-v1-...
     python run_experiment.py
-    
-    # Or run a single model/frame for testing:
     python run_experiment.py --model chatgpt --frame physician --scenarios 1,2,3
+    python run_experiment.py --dry-run
 """
 
 import asyncio
-import httpx
+import csv
 import json
 import os
 import sys
 import argparse
 from datetime import datetime
 from pathlib import Path
-from config import MODELS, SCENARIOS
+from config import MODELS, PHYSICIAN_SUFFIX, load_scenarios
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
+
 
 def get_api_key():
     key = os.environ.get("OPENROUTER_API_KEY")
@@ -39,21 +39,21 @@ def get_api_key():
     return key
 
 
-async def query_model(client: httpx.AsyncClient, api_key: str, model_id: str, prompt: str, run_id: str) -> dict:
+async def query_model(client, api_key, model_id, prompt, run_id):
     """Send a single prompt to a model via OpenRouter."""
+    import httpx
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/nisargpatel/aaoms-triage-study",
+        "HTTP-Referer": "https://github.com/nisargpatel/oms-triage",
         "X-Title": "AAOMS AI Triage Study",
     }
     payload = {
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 4096,
-        "temperature": 0.0,  # Deterministic for reproducibility
+        "temperature": 0.0,
     }
-
     try:
         response = await client.post(OPENROUTER_URL, headers=headers, json=payload, timeout=120)
         response.raise_for_status()
@@ -67,54 +67,43 @@ async def query_model(client: httpx.AsyncClient, api_key: str, model_id: str, pr
             "usage": data.get("usage", {}),
             "timestamp": datetime.now().isoformat(),
         }
-    except httpx.HTTPStatusError as e:
-        return {
-            "run_id": run_id,
-            "status": "error",
-            "error": f"HTTP {e.response.status_code}: {e.response.text[:500]}",
-            "timestamp": datetime.now().isoformat(),
-        }
     except Exception as e:
+        error_msg = str(e)
+        if hasattr(e, 'response'):
+            error_msg = f"HTTP {e.response.status_code}: {e.response.text[:500]}"
         return {
             "run_id": run_id,
             "status": "error",
-            "error": str(e),
+            "error": error_msg,
             "timestamp": datetime.now().isoformat(),
         }
 
 
-async def run_experiment(model_filter=None, frame_filter=None, scenario_filter=None):
-    """Run all experiment conditions and save results."""
-    api_key = get_api_key()
-    results = []
-    run_counter = 0
-    
-    # Build the run list
+def build_runs(scenarios, model_filter=None, frame_filter=None):
+    """Build the list of all experiment runs from loaded scenarios."""
     runs = []
+    run_counter = 0
+
     for model_name, model_id in MODELS.items():
         if model_filter and model_name != model_filter:
             continue
-        for scenario in SCENARIOS:
-            if scenario_filter and scenario["id"] not in scenario_filter:
-                continue
-            
+        for scenario in scenarios:
             frames_to_run = []
-            if (not frame_filter or frame_filter == "physician"):
+            if not frame_filter or frame_filter == "physician":
                 frames_to_run.append("physician")
             if scenario["has_patient_frame"] and (not frame_filter or frame_filter == "patient"):
                 frames_to_run.append("patient")
-            
+
             for frame in frames_to_run:
                 run_counter += 1
-                prompt = scenario["physician_prompt"] if frame == "physician" else scenario["patient_prompt"]
-                
-                # Add the appropriate suffix for physician frames
-                if frame == "physician" and scenario["category"] != "E":
-                    from config import PHYSICIAN_SUFFIX
-                    prompt = prompt + PHYSICIAN_SUFFIX
-                # Patient frames already have their suffix baked into the prompt text
-                # Category E prompts already have their questions baked in
-                
+                if frame == "physician":
+                    prompt = scenario["physician_prompt"]
+                    # Category E prompts already have questions baked in
+                    if scenario["category"] != "E":
+                        prompt = prompt + PHYSICIAN_SUFFIX
+                else:
+                    prompt = scenario["patient_prompt"]
+
                 runs.append({
                     "run_id": f"R{run_counter:03d}",
                     "scenario_id": scenario["id"],
@@ -126,64 +115,92 @@ async def run_experiment(model_filter=None, frame_filter=None, scenario_filter=N
                     "frame": frame,
                     "prompt": prompt,
                 })
+    return runs
 
+
+async def run_experiment(model_filter=None, frame_filter=None, scenario_ids=None):
+    """Run all experiment conditions and save results."""
+    import httpx
+
+    api_key = get_api_key()
+    scenarios = load_scenarios(scenario_ids)
+    if not scenarios:
+        print("ERROR: No scenarios found in prompts/. Run extract_scenarios.py first.")
+        sys.exit(1)
+
+    runs = build_runs(scenarios, model_filter, frame_filter)
     total = len(runs)
+    results = []
+
     print(f"\n{'='*60}")
     print(f"AAOMS 2026 AI Triage Study — Experiment Runner")
     print(f"{'='*60}")
+    print(f"Scenarios loaded: {len(scenarios)} (from prompts/*.json)")
     print(f"Total runs: {total}")
     print(f"Models: {', '.join(m for m in MODELS if not model_filter or m == model_filter)}")
-    print(f"Scenarios: {len(set(r['scenario_id'] for r in runs))}")
     print(f"{'='*60}\n")
 
     async with httpx.AsyncClient() as client:
         for i, run in enumerate(runs):
-            print(f"[{i+1}/{total}] {run['run_id']}: Scenario {run['scenario_id']} "
+            print(f"[{i+1}/{total}] {run['run_id']}: S{run['scenario_id']:02d} "
                   f"({run['scenario_name'][:30]}...) | {run['model_name']} | {run['frame']}")
-            
+
             result = await query_model(client, api_key, run["model_id"], run["prompt"], run["run_id"])
-            
-            # Merge run metadata with result
+
             full_result = {**run, **result}
-            del full_result["prompt"]  # Don't duplicate the prompt in results (it's in the run metadata)
-            full_result["prompt_text"] = run["prompt"]  # Keep for reference
+            full_result["prompt_text"] = full_result.pop("prompt")
             results.append(full_result)
-            
+
             if result["status"] == "success":
-                print(f"         ✓ Success ({result['usage'].get('total_tokens', '?')} tokens)")
+                print(f"         ✓ ({result['usage'].get('total_tokens', '?')} tokens)")
             else:
-                print(f"         ✗ Error: {result.get('error', 'unknown')[:80]}")
-            
-            # Rate limiting — be gentle with OpenRouter
+                print(f"         ✗ {result.get('error', 'unknown')[:80]}")
+
             await asyncio.sleep(1.5)
 
-    # Save results
+    # Save JSON (full results)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = DATA_DIR / f"experiment_results_{timestamp}.json"
-    with open(output_file, "w") as f:
+    json_file = DATA_DIR / f"experiment_results_{timestamp}.json"
+    with open(json_file, "w") as f:
         json.dump(results, f, indent=2)
-    print(f"\n{'='*60}")
-    print(f"Results saved to {output_file}")
-    print(f"Total runs: {len(results)}")
-    print(f"Successful: {sum(1 for r in results if r['status'] == 'success')}")
-    print(f"Errors: {sum(1 for r in results if r['status'] == 'error')}")
-    print(f"{'='*60}")
 
-    # Also save a simplified CSV for quick import to the scoring spreadsheet
+    # Save CSV (for spreadsheet import)
     csv_file = DATA_DIR / f"experiment_outputs_{timestamp}.csv"
-    import csv
     with open(csv_file, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Run ID", "Scenario #", "Category", "Scenario Name", "Model", "Frame",
-                         "Model Response", "Status"])
+        writer.writerow(["Run ID", "Scenario #", "Category", "Scenario Name", "Model",
+                         "Frame", "Correct Triage", "Model Response", "Status"])
         for r in results:
             writer.writerow([
                 r["run_id"], r["scenario_id"], r["category"], r["scenario_name"],
-                r["model_name"], r["frame"],
-                r.get("response", r.get("error", "")),
-                r["status"],
+                r["model_name"], r["frame"], r["correct_triage"],
+                r.get("response", r.get("error", "")), r["status"],
             ])
-    print(f"CSV export saved to {csv_file}")
+
+    # Save ground truth reference (from scenario JSONs, for analysis)
+    ground_truth_file = DATA_DIR / f"ground_truth_{timestamp}.json"
+    gt = []
+    for s in scenarios:
+        gt.append({
+            "id": s["id"],
+            "category": s["category"],
+            "name": s["name"],
+            "correct_triage": s["correct_triage"],
+            "has_patient_frame": s["has_patient_frame"],
+            "critical_elements": s["critical_elements"],
+            "dangerous_recs": s["dangerous_recs"],
+            "num_critical_elements": len(s["critical_elements"]),
+        })
+    with open(ground_truth_file, "w") as f:
+        json.dump(gt, f, indent=2)
+
+    print(f"\n{'='*60}")
+    print(f"Results:      {json_file}")
+    print(f"CSV export:   {csv_file}")
+    print(f"Ground truth: {ground_truth_file}")
+    print(f"Total: {len(results)} | Success: {sum(1 for r in results if r['status'] == 'success')} | "
+          f"Errors: {sum(1 for r in results if r['status'] == 'error')}")
+    print(f"{'='*60}")
 
     return results
 
@@ -196,34 +213,27 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Print runs without executing")
     args = parser.parse_args()
 
-    scenario_filter = None
-    if args.scenarios:
-        scenario_filter = [int(x) for x in args.scenarios.split(",")]
+    scenario_ids = [int(x) for x in args.scenarios.split(",")] if args.scenarios else None
+    scenarios = load_scenarios(scenario_ids)
+
+    if not scenarios:
+        print("ERROR: No scenarios found. Check that prompts/*.json files exist.")
+        sys.exit(1)
 
     if args.dry_run:
-        print("DRY RUN — would execute:")
-        count = 0
-        for model_name in MODELS:
-            if args.model and model_name != args.model:
-                continue
-            for s in SCENARIOS:
-                if scenario_filter and s["id"] not in scenario_filter:
-                    continue
-                frames = []
-                if not args.frame or args.frame == "physician":
-                    frames.append("physician")
-                if s["has_patient_frame"] and (not args.frame or args.frame == "patient"):
-                    frames.append("patient")
-                for frame in frames:
-                    count += 1
-                    print(f"  {count:3d}. Scenario {s['id']:2d} ({s['name'][:35]:35s}) | {model_name:8s} | {frame}")
-        print(f"\nTotal: {count} runs")
+        runs = build_runs(scenarios, args.model, args.frame)
+        print(f"DRY RUN — {len(runs)} runs planned:\n")
+        for i, r in enumerate(runs, 1):
+            print(f"  {i:3d}. S{r['scenario_id']:02d} ({r['scenario_name'][:35]:35s}) | "
+                  f"{r['model_name']:8s} | {r['frame']}")
+        print(f"\nTotal: {len(runs)} runs")
+        print(f"Scenarios: {len(scenarios)} loaded from prompts/*.json")
         return
 
     asyncio.run(run_experiment(
         model_filter=args.model,
         frame_filter=args.frame,
-        scenario_filter=scenario_filter,
+        scenario_ids=scenario_ids,
     ))
 
 
