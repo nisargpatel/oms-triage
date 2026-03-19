@@ -204,44 +204,52 @@ def fig2_framing_gap(df):
 
 
 def fig3_calibration(df):
-    """Figure 3: Confidence calibration curves."""
+    """Figure 3: Confidence calibration curves (physician frame only).
+    Confidence is only elicited in the physician frame — patients don't ask 'how confident are you.'"""
     fig, ax = plt.subplots(figsize=(8, 7))
     
     # Perfect calibration diagonal
     ax.plot([0, 1], [0, 1], "k--", alpha=0.3, label="Perfect calibration")
     
+    phys_df = df[df["frame"] == "physician"].copy()
+    
     for model in ["chatgpt", "claude", "gemini"]:
-        for frame, ls in FRAME_STYLES.items():
-            sub = df[(df["model"] == model) & (df["frame"] == frame)].copy()
-            if sub.empty:
-                continue
-            
-            # Confidence is 1-10, normalize to 0-1
-            sub["conf_norm"] = sub["confidence"].astype(float) / 10
-            sub["correct"] = sub["triage_score"].astype(float) == 2
-            
-            # Bin into 3 groups
-            bins = [0, 0.4, 0.7, 1.01]
-            bin_labels = ["Low (1-4)", "Med (5-7)", "High (8-10)"]
-            sub["bin"] = pd.cut(sub["conf_norm"], bins=bins, labels=bin_labels, include_lowest=True)
-            
-            grouped = sub.groupby("bin", observed=True).agg(
-                mean_conf=("conf_norm", "mean"),
-                mean_acc=("correct", "mean"),
-                count=("correct", "count"),
-            ).dropna()
-            
-            if len(grouped) > 1:
-                label = f"{model.title()} ({frame[:4]})"
-                ax.plot(grouped["mean_conf"], grouped["mean_acc"],
-                        color=MODEL_COLORS[model], linestyle=ls, marker="o",
-                        markersize=6, label=label, linewidth=2)
+        sub = phys_df[phys_df["model"] == model].copy()
+        if sub.empty:
+            continue
+        
+        # Drop rows without confidence data
+        sub["confidence"] = pd.to_numeric(sub["confidence"], errors="coerce")
+        sub = sub.dropna(subset=["confidence"])
+        if sub.empty:
+            continue
+        
+        # Confidence is 1-10, normalize to 0-1
+        sub["conf_norm"] = sub["confidence"] / 10
+        sub["correct"] = sub["triage_score"].astype(float) == 2
+        
+        # Bin into 3 groups
+        bins = [0, 0.4, 0.7, 1.01]
+        bin_labels = ["Low (1-4)", "Med (5-7)", "High (8-10)"]
+        sub["bin"] = pd.cut(sub["conf_norm"], bins=bins, labels=bin_labels, include_lowest=True)
+        
+        grouped = sub.groupby("bin", observed=True).agg(
+            mean_conf=("conf_norm", "mean"),
+            mean_acc=("correct", "mean"),
+            count=("correct", "count"),
+        ).dropna()
+        
+        if len(grouped) > 1:
+            label = f"{model.title()}"
+            ax.plot(grouped["mean_conf"], grouped["mean_acc"],
+                    color=MODEL_COLORS[model], linestyle="-", marker="o",
+                    markersize=6, label=label, linewidth=2)
 
     ax.set_xlabel("Model Stated Confidence (normalized)")
     ax.set_ylabel("Actual Triage Accuracy")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
-    ax.set_title("Figure 3: Confidence Calibration\n(Gap between curve and diagonal = miscalibration)",
+    ax.set_title("Figure 3: Confidence Calibration — Physician Frame Only\n(Gap between curve and diagonal = miscalibration)",
                  fontweight="bold")
     ax.legend(fontsize=8, loc="lower right")
     ax.set_aspect("equal")
@@ -494,28 +502,33 @@ def compute_statistics(df):
         print(f"  {model:8s} | Discordant: {discordant}/{n} ({discordant/n*100:.0f}%) | "
               f"Patient under-triaged: {patient_under}/{n} ({patient_under/n*100:.0f}%)")
 
-    # ── Expected Calibration Error ──
-    print("\n── Expected Calibration Error (ECE) ──")
-    for model in df["model"].unique():
-        for frame in df["frame"].unique():
-            sub = df[(df["model"] == model) & (df["frame"] == frame)].copy()
-            if sub.empty or "confidence" not in sub.columns:
-                continue
-            sub["conf_norm"] = sub["confidence"].astype(float) / 10
-            sub["correct"] = sub["triage_score"].astype(float) == 2
-            
-            bins = [0, 0.4, 0.7, 1.01]
-            sub["bin"] = pd.cut(sub["conf_norm"], bins=bins, include_lowest=True)
-            grouped = sub.groupby("bin", observed=True).agg(
-                mean_conf=("conf_norm", "mean"),
-                mean_acc=("correct", "mean"),
-                count=("correct", "count"),
-            ).dropna()
-            
-            if len(grouped) > 0:
-                n_total = grouped["count"].sum()
-                ece = (grouped["count"] / n_total * (grouped["mean_conf"] - grouped["mean_acc"]).abs()).sum()
-                print(f"  {model:8s} | {frame:9s} | ECE = {ece:.3f}")
+    # ── Expected Calibration Error (physician frame only) ──
+    print("\n── Expected Calibration Error (ECE) — Physician Frame Only ──")
+    print("  Note: Confidence elicited only in physician frame (patients don't ask 'how confident are you').")
+    phys_for_ece = df[df["frame"] == "physician"]
+    for model in phys_for_ece["model"].unique():
+        sub = phys_for_ece[phys_for_ece["model"] == model].copy()
+        if sub.empty or "confidence" not in sub.columns:
+            continue
+        sub["confidence"] = pd.to_numeric(sub["confidence"], errors="coerce")
+        sub = sub.dropna(subset=["confidence"])
+        if sub.empty:
+            continue
+        sub["conf_norm"] = sub["confidence"] / 10
+        sub["correct"] = sub["triage_score"].astype(float) == 2
+        
+        bins = [0, 0.4, 0.7, 1.01]
+        sub["bin"] = pd.cut(sub["conf_norm"], bins=bins, include_lowest=True)
+        grouped = sub.groupby("bin", observed=True).agg(
+            mean_conf=("conf_norm", "mean"),
+            mean_acc=("correct", "mean"),
+            count=("correct", "count"),
+        ).dropna()
+        
+        if len(grouped) > 0:
+            n_total = grouped["count"].sum()
+            ece = (grouped["count"] / n_total * (grouped["mean_conf"] - grouped["mean_acc"]).abs()).sum()
+            print(f"  {model:8s} | ECE = {ece:.3f} (n={int(n_total)})")
 
     # ── Inter-rater reliability placeholder ──
     print("\n── Inter-Rater Reliability ──")
@@ -623,11 +636,12 @@ def compute_statistics(df):
     else:
         print("  (Information-seeking data not found in CSV — score this in the spreadsheet)")
 
-    # ── S5: Confidence-accuracy correlation ──
-    print("\n── S5: Confidence-Accuracy Correlation (Spearman's) ──")
-    if "confidence" in df.columns:
-        for model in df["model"].unique():
-            sub = df[df["model"] == model].copy()
+    # ── S5: Confidence-accuracy correlation (physician frame only) ──
+    print("\n── S5: Confidence-Accuracy Correlation (Spearman's) — Physician Frame Only ──")
+    phys_for_corr = df[df["frame"] == "physician"]
+    if "confidence" in phys_for_corr.columns:
+        for model in phys_for_corr["model"].unique():
+            sub = phys_for_corr[phys_for_corr["model"] == model].copy()
             sub["conf"] = pd.to_numeric(sub["confidence"], errors="coerce")
             sub["correct"] = (sub["triage_score"].astype(float) == 2).astype(int)
             sub = sub.dropna(subset=["conf"])

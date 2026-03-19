@@ -9,9 +9,9 @@ from pathlib import Path
 
 # ── OpenRouter models ────────────────────────────────────────────
 MODELS = {
-    "chatgpt": "openai/gpt-4o-2024-11-20",       # Update to GPT-5 when available
-    "claude":  "anthropic/claude-sonnet-4-20250514",
-    "gemini":  "google/gemini-2.5-pro-preview-05-06",
+    "chatgpt": "openai/gpt-5.4",
+    "claude":  "anthropic/claude-opus-4.6",
+    "gemini":  "google/gemini-3.1-pro-preview",
 }
 
 # ── Prompt suffixes ──────────────────────────────────────────────

@@ -38,8 +38,7 @@ FIGURES_DIR.mkdir(exist_ok=True)
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Use a cheap model NOT in the study for judging
-JUDGE_MODEL = "anthropic/claude-haiku-4-5-20251001"
-
+JUDGE_MODEL = "openai/gpt-5.4-mini"
 
 def get_api_key():
     key = os.environ.get("OPENROUTER_API_KEY")
