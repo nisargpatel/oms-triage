@@ -473,7 +473,7 @@ def compute_statistics(df):
         
         if b + c > 0:
             # McNemar's test (exact binomial for small samples)
-            p_value = stats.binom_test(b, b + c, 0.5) if hasattr(stats, 'binom_test') else stats.binomtest(b, b + c, 0.5).pvalue
+            p_value = stats.binomtest(b, b + c, 0.5).pvalue
             print(f"  {model:8s} | b={b} (phys✓ pat✗), c={c} (phys✗ pat✓) | p={p_value:.4f}")
         else:
             print(f"  {model:8s} | No discordant pairs")
